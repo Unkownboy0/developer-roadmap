@@ -1118,31 +1118,10 @@
       }
     ]
   },
-  "5EPmbiNdP_vhIXclv_GjV": {
-    "title": "react-query",
-    "description": "Powerful asynchronous state management, server-state utilities and data fetching for TS/JS, React, Solid, Svelte and Vue.\n\nVisit the following resources to learn more:",
-    "links": [
-      {
-        "title": "TanStack Query",
-        "url": "https://github.com/TanStack/query",
-        "type": "opensource"
-      },
-      {
-        "title": "Explore top posts about React",
-        "url": "https://app.daily.dev/tags/react?ref=roadmapsh",
-        "type": "article"
-      },
-      {
-        "title": "React Query in 100 Seconds",
-        "url": "https://www.youtube.com/watch?v=novnyCaa7To",
-        "type": "video"
-      },
-      {
-        "title": "React Query Tutorial for Beginners - Complete Playlist",
-        "url": "https://www.youtube.com/playlist?list=PLC3y8-rFHvwjTELCrPrcZlo6blLBUspd2",
-        "type": "video"
-      }
-    ]
+  "tanstack-query@5EPmbiNdP_vhIXclv_GjV.md": {
+    "title": "Tanstack Query",
+    "description": "",
+    "links": []
   },
   "ElqWQClryfSYdL7P_mgYK": {
     "title": "Axios",
