@@ -1,11 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useChat } from '@ai-sdk/react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Ban,
+  FileText, HeartHandshake,
+  Star,
+  X,
+  Zap
+} from 'lucide-react';
 import { useKeydown } from '../../hooks/use-keydown';
 import { useLoadTopic } from '../../hooks/use-load-topic';
 import { useOutsideClick } from '../../hooks/use-outside-click';
+import { useToast } from '../../hooks/use-toast';
 import { useToggleTopic } from '../../hooks/use-toggle-topic';
+import { topicDetailAiChatTransport } from '../../lib/ai.ts';
+import { getUrlParams, parseUrl } from '../../lib/browser';
+import { cn } from '../../lib/classname.ts';
+import { lockBodyScroll } from '../../lib/dom.ts';
 import { httpGet } from '../../lib/http';
 import { isLoggedIn } from '../../lib/jwt';
+import { markdownToHtml, sanitizeMarkdown } from '../../lib/markdown';
+import { showLoginPopup } from '../../lib/popup';
 import type { ResourceType } from '../../lib/resource-progress';
 import {
   isTopicDone,
@@ -13,35 +29,30 @@ import {
   renderTopicProgress,
   updateResourceProgress as updateResourceProgressApi,
 } from '../../lib/resource-progress';
+import { type AllowedRoadmapRenderer } from '../../lib/roadmap.ts';
+import { aiLimitOptions } from '../../queries/ai-course.ts';
+import { billingDetailsOptions } from '../../queries/billing.ts';
+import { roadmapTreeMappingOptions } from '../../queries/roadmap-tree.ts';
 import { pageProgressMessage } from '../../stores/page';
-import { showLoginPopup } from '../../lib/popup';
-import { useToast } from '../../hooks/use-toast';
+import { queryClient } from '../../stores/query-client.ts';
+import { UpgradeAccountModal } from '../Billing/UpgradeAccountModal.tsx';
 import type {
   AllowedLinkTypes,
   RoadmapContentDocument,
 } from '../CustomRoadmap/CustomRoadmap';
-import { markdownToHtml, sanitizeMarkdown } from '../../lib/markdown';
-import { Ban, FileText, HeartHandshake, Star, X } from 'lucide-react';
-import { getUrlParams, parseUrl } from '../../lib/browser';
-import { Spinner } from '../ReactIcons/Spinner';
+import type { AIChatHistoryType } from '../GenerateCourse/AICourseLessonChat.tsx';
 import { GitHubIcon } from '../ReactIcons/GitHubIcon.tsx';
-import { type AllowedRoadmapRenderer } from '../../lib/roadmap.ts';
-import { lockBodyScroll } from '../../lib/dom.ts';
-import { TopicDetailLink } from './TopicDetailLink.tsx';
-import { ResourceListSeparator } from './ResourceListSeparator.tsx';
+import { Spinner } from '../ReactIcons/Spinner';
+import { CreateCourseModal } from './CreateCourseModal.tsx';
 import { PaidResourceDisclaimer } from './PaidResourceDisclaimer.tsx';
+import { ResourceListSeparator } from './ResourceListSeparator.tsx';
+import { TopicDetailAI } from './TopicDetailAI.tsx';
+import { TopicDetailLink } from './TopicDetailLink.tsx';
 import {
   TopicDetailsTabs,
   type AllowedTopicDetailsTabs,
 } from './TopicDetailsTabs.tsx';
-import { TopicDetailAI } from './TopicDetailAI.tsx';
-import { cn } from '../../lib/classname.ts';
-import type { AIChatHistoryType } from '../GenerateCourse/AICourseLessonChat.tsx';
-import { UpgradeAccountModal } from '../Billing/UpgradeAccountModal.tsx';
 import { TopicProgressButton } from './TopicProgressButton.tsx';
-import { CreateCourseModal } from './CreateCourseModal.tsx';
-import { useChat } from '@ai-sdk/react';
-import { topicDetailAiChatTransport } from '../../lib/ai.ts';
 
 type PaidResourceType = {
   _id?: string;
@@ -121,16 +132,14 @@ export function TopicDetail(props: TopicDetailProps) {
     defaultActiveTab = 'content',
   } = props;
 
-  const [hasEnoughLinks, setHasEnoughLinks] = useState(false);
   const [contributionUrl, setContributionUrl] = useState('');
   const [isActive, setIsActive] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isTopicLoading, setIsTopicLoading] = useState(false);
   const [isContributing, setIsContributing] = useState(false);
   const [error, setError] = useState('');
   const [topicHtml, setTopicHtml] = useState('');
   const [hasContent, setHasContent] = useState(false);
   const [topicTitle, setTopicTitle] = useState('');
-  const [topicHtmlTitle, setTopicHtmlTitle] = useState('');
   const [links, setLinks] = useState<RoadmapContentDocument['links']>([]);
   const [activeTab, setActiveTab] =
     useState<AllowedTopicDetailsTabs>(defaultActiveTab);
@@ -159,6 +168,40 @@ export function TopicDetail(props: TopicDetailProps) {
     id: chatId,
     transport: topicDetailAiChatTransport,
   });
+
+  const sanitizedTopicId = topicId?.includes('@')
+    ? topicId?.split('@')?.[1]
+    : topicId;
+  const { data: roadmapTreeMapping, isLoading: isRoadmapTreeMappingLoading } =
+    useQuery(
+      {
+        ...roadmapTreeMappingOptions(resourceId),
+        select: (data) => {
+          const node = data.find(
+            (mapping) => mapping.nodeId === sanitizedTopicId,
+          );
+          return node;
+        },
+        enabled: !!sanitizedTopicId && !isCustomResource,
+      },
+      queryClient,
+    );
+  const { data: tokenUsage, isLoading: isTokenUsageLoading } = useQuery(
+    aiLimitOptions(),
+    queryClient,
+  );
+
+  const { data: userBillingDetails, isLoading: isBillingDetailsLoading } =
+    useQuery(billingDetailsOptions(), queryClient);
+
+  const isLimitExceeded = (tokenUsage?.used || 0) >= (tokenUsage?.limit || 0);
+  const isPaidUser = userBillingDetails?.status === 'active';
+
+  const isLoading =
+    isTopicLoading ||
+    isRoadmapTreeMappingLoading ||
+    isTokenUsageLoading ||
+    isBillingDetailsLoading;
 
   const handleClose = () => {
     onClose?.();
@@ -237,7 +280,7 @@ export function TopicDetail(props: TopicDetailProps) {
   // Load the topic detail when the topic detail is active
   useLoadTopic(({ topicId, resourceType, resourceId, isCustomResource }) => {
     setError('');
-    setIsLoading(true);
+    setIsTopicLoading(true);
     setIsActive(true);
 
     setTopicId(topicId);
@@ -273,7 +316,7 @@ export function TopicDetail(props: TopicDetailProps) {
       .then(({ response }) => {
         if (!response) {
           setError('Topic not found.');
-          setIsLoading(false);
+          setIsTopicLoading(false);
           return;
         }
         let topicHtml = '';
@@ -353,8 +396,6 @@ export function TopicDetail(props: TopicDetailProps) {
           setLinks(listLinks);
           setHasContent(topicHasContent);
           setContributionUrl(contributionUrl);
-          setHasEnoughLinks(links.length >= 3);
-          setTopicHtmlTitle(titleElem?.textContent || '');
 
           if (!topicHasContent && renderer === 'editor') {
             setActiveTab('ai');
@@ -371,12 +412,12 @@ export function TopicDetail(props: TopicDetailProps) {
           topicHtml = markdownToHtml(sanitizedMarkdown, false);
         }
 
-        setIsLoading(false);
+        setIsTopicLoading(false);
         setTopicHtml(topicHtml);
       })
       .catch((err) => {
         setError('Something went wrong. Please try again later.');
-        setIsLoading(false);
+        setIsTopicLoading(false);
       });
   });
 
@@ -391,9 +432,6 @@ export function TopicDetail(props: TopicDetailProps) {
     return null;
   }
 
-  const tnsLink =
-    'https://thenewstack.io/devops/?utm_source=roadmap.sh&utm_medium=Referral&utm_campaign=Topic';
-
   const paidResourcesForTopic = paidResources.filter((resource) => {
     const normalizedTopicId =
       topicId.indexOf('@') !== -1 ? topicId.split('@')[1] : topicId;
@@ -401,6 +439,10 @@ export function TopicDetail(props: TopicDetailProps) {
   });
 
   const shouldShowAiTab = !isCustomResource && resourceType === 'roadmap';
+  const subjects = roadmapTreeMapping?.subjects || [];
+  const guides = roadmapTreeMapping?.guides || [];
+  const hasSubjects = subjects.length > 0;
+  const hasGuides = guides.length > 0;
 
   const hasDataCampResources = paidResources.some((resource) =>
     resource.title.toLowerCase().includes('datacamp'),
@@ -605,6 +647,66 @@ export function TopicDetail(props: TopicDetailProps) {
                                       action: `Click: ${parsedUrl.hostname}`,
                                       label: `${resourceType} / ${resourceId} / ${topicId} / ${link.url}`,
                                     });
+                                  }
+                                }}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+
+                  {(hasSubjects || hasGuides) && (
+                    <>
+                      <ResourceListSeparator
+                        text="Your personalized AI tutor"
+                        className="text-blue-600"
+                        icon={Zap}
+                      />
+                      <ul className="mt-4 ml-3 flex flex-col flex-wrap gap-1 text-sm">
+                        {subjects.map((subject) => {
+                          return (
+                            <li key={subject}>
+                              <TopicDetailLink
+                                url={`/ai/course/search?term=${subject}&src=topic`}
+                                type="course"
+                                title={subject}
+                                onClick={(e) => {
+                                  if (!isLoggedIn()) {
+                                    e.preventDefault();
+                                    showLoginPopup();
+                                    return;
+                                  }
+
+                                  if (isLimitExceeded && !isPaidUser) {
+                                    e.preventDefault();
+                                    setShowUpgradeModal(true);
+                                    return;
+                                  }
+                                }}
+                              />
+                            </li>
+                          );
+                        })}
+                        {guides.map((guide) => {
+                          return (
+                            <li key={guide}>
+                              <TopicDetailLink
+                                url={`/ai/guide/search?term=${guide}&src=topic`}
+                                type="article"
+                                title={guide}
+                                onClick={(e) => {
+                                  if (!isLoggedIn()) {
+                                    e.preventDefault();
+                                    showLoginPopup();
+                                    return;
+                                  }
+
+                                  if (isLimitExceeded && !isPaidUser) {
+                                    e.preventDefault();
+                                    setShowUpgradeModal(true);
+                                    return;
                                   }
                                 }}
                               />

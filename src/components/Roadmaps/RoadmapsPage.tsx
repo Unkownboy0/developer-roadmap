@@ -55,7 +55,7 @@ export type GroupType = {
   roadmaps: {
     title: string;
     link: string;
-    type: 'role' | 'skill';
+    type: 'role' | 'skill' | 'best-practice';
     otherGroups?: AllowGroupNames[];
   }[];
 };
@@ -152,6 +152,12 @@ const groups: GroupType[] = [
         otherGroups: ['Web Development'],
       },
       {
+        title: 'Next.js',
+        link: '/nextjs',
+        type: 'skill',
+        otherGroups: ['Web Development'],
+      },
+      {
         title: 'Spring Boot',
         link: '/spring-boot',
         type: 'skill',
@@ -163,16 +169,51 @@ const groups: GroupType[] = [
         type: 'skill',
         otherGroups: ['Web Development'],
       },
+      {
+        title: 'Laravel',
+        link: '/laravel',
+        type: 'skill',
+        otherGroups: ['Web Development'],
+      },
     ],
   },
   {
     group: 'Languages / Platforms',
     roadmaps: [
       {
+        title: 'HTML',
+        link: '/html',
+        type: 'skill',
+        otherGroups: ['Web Development', 'Absolute Beginners'],
+      },
+      {
+        title: 'CSS',
+        link: '/css',
+        type: 'skill',
+        otherGroups: ['Web Development', 'Absolute Beginners'],
+      },
+      {
         title: 'JavaScript',
         link: '/javascript',
         type: 'skill',
+        otherGroups: [
+          'Web Development',
+          'DevOps',
+          'Mobile Development',
+          'Absolute Beginners',
+        ],
+      },
+      {
+        title: 'Kotlin',
+        link: '/kotlin',
+        type: 'skill',
         otherGroups: ['Web Development', 'DevOps', 'Mobile Development'],
+      },
+      {
+        title: 'Swift & Swift-UI',
+        link: '/swift-ui',
+        type: 'skill',
+        otherGroups: ['Mobile Development'],
       },
       {
         title: 'TypeScript',
@@ -184,13 +225,13 @@ const groups: GroupType[] = [
         title: 'Node.js',
         link: '/nodejs',
         type: 'skill',
-        otherGroups: ['Web Development', 'DevOps'],
+        otherGroups: ['Web Development', 'DevOps', 'Absolute Beginners'],
       },
       {
         title: 'PHP',
         link: '/php',
         type: 'skill',
-        otherGroups: ['Web Development', 'DevOps'],
+        otherGroups: ['Web Development', 'DevOps', 'Absolute Beginners'],
       },
       {
         title: 'C++',
@@ -201,7 +242,7 @@ const groups: GroupType[] = [
         title: 'Go',
         link: '/golang',
         type: 'skill',
-        otherGroups: ['Web Development', 'DevOps'],
+        otherGroups: ['Web Development', 'DevOps', 'Absolute Beginners'],
       },
       {
         title: 'Rust',
@@ -226,6 +267,12 @@ const groups: GroupType[] = [
         link: '/sql',
         type: 'skill',
         otherGroups: ['Web Development', 'Databases', 'DevOps'],
+      },
+      {
+        title: 'Shell / Bash',
+        link: '/shell-bash',
+        type: 'skill',
+        otherGroups: ['Web Development', 'DevOps'],
       },
     ],
   },
@@ -379,6 +426,11 @@ const groups: GroupType[] = [
     group: 'Machine Learning',
     roadmaps: [
       {
+        title: 'Machine Learning',
+        link: '/machine-learning',
+        type: 'role',
+      },
+      {
         title: 'AI and Data Scientist',
         link: '/ai-data-scientist',
         type: 'role',
@@ -401,6 +453,16 @@ const groups: GroupType[] = [
       {
         title: 'Data Analyst',
         link: '/data-analyst',
+        type: 'role',
+      },
+      {
+        title: 'BI Analyst',
+        link: '/bi-analyst',
+        type: 'role',
+      },
+      {
+        title: 'Data Engineer',
+        link: '/data-engineer',
         type: 'role',
       },
       {
@@ -481,6 +543,41 @@ const groups: GroupType[] = [
       },
     ],
   },
+  {
+    group: 'Best Practices',
+    roadmaps: [
+      {
+        title: 'Backend Performance',
+        link: '/backend-performance-best-practices',
+        type: 'best-practice',
+        otherGroups: ['Web Development'],
+      },
+      {
+        title: 'Frontend Performance',
+        link: '/frontend-performance-best-practices',
+        type: 'best-practice',
+        otherGroups: ['Web Development'],
+      },
+      {
+        title: 'Code Review',
+        link: '/code-review-best-practices',
+        type: 'best-practice',
+        otherGroups: ['Web Development'],
+      },
+      {
+        title: 'AWS',
+        link: '/aws-review-best-practices',
+        type: 'best-practice',
+        otherGroups: ['Web Development', 'DevOps'],
+      },
+      {
+        title: 'API Security',
+        link: '/api-security-best-practices',
+        type: 'best-practice',
+        otherGroups: ['Web Development'],
+      },
+    ],
+  },
 ];
 
 const roleRoadmaps = groups.flatMap((group) =>
@@ -488,6 +585,9 @@ const roleRoadmaps = groups.flatMap((group) =>
 );
 const skillRoadmaps = groups.flatMap((group) =>
   group.roadmaps.filter((roadmap) => roadmap.type === 'skill'),
+);
+const bestPracticeRoadmaps = groups.flatMap((group) =>
+  group.roadmaps.filter((roadmap) => roadmap.type === 'best-practice'),
 );
 
 const allGroups = [
@@ -498,6 +598,10 @@ const allGroups = [
   {
     group: 'Skill Based Roadmaps',
     roadmaps: skillRoadmaps,
+  },
+  {
+    group: 'Best Practices',
+    roadmaps: bestPracticeRoadmaps,
   },
 ];
 
@@ -597,7 +701,7 @@ export function RoadmapsPage() {
         {isFilterOpen && <X size={13} className="mr-1" />}
         Categories
       </button>
-      <div className="container relative flex flex-col gap-4 sm:flex-row">
+      <div className="relative container flex flex-col gap-4 sm:flex-row">
         <div
           className={cn(
             'hidden w-full flex-col from-gray-100 sm:w-[180px] sm:border-r sm:bg-linear-to-l sm:pt-6',
@@ -635,10 +739,10 @@ export function RoadmapsPage() {
             </div>
           </div>
         </div>
-        <div className="flex grow flex-col gap-6 pb-20 pt-2 sm:pt-8">
+        <div className="flex grow flex-col gap-6 pt-2 pb-20 sm:pt-8">
           {visibleGroups.map((group) => (
             <div key={`${group.group}-${group.roadmaps.length}`}>
-              <h2 className="mb-2 text-xs uppercase tracking-wide text-gray-400">
+              <h2 className="mb-2 text-xs tracking-wide text-gray-400 uppercase">
                 {group.group}
               </h2>
 
